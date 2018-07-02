@@ -38,32 +38,27 @@ inject_client_functions(Form, RPCFunctions) ->
             false ->
               inject(Injector, T, Acc ++ [H]);
             {FunctionName, FunctionId, Parameters} ->
-              case length(Parameters) + 1 of
-                Arity ->
-                  case Function of
-                    [{clause, ClauseLine, [{var, PidLine, _} | Params], Guards, [{atom, AtomLine, ok}]}] ->
-                      MyFunction = {
-                        function,
-                        Line,
-                        FunctionName,
-                        Arity,
-                        [
-                          {clause, ClauseLine, [{var, PidLine, 'Pid'} | Params], Guards,
-                            [{op, AtomLine,
-                              '!',
-                              {var, AtomLine, 'Pid'},
-                              {tuple, AtomLine, [
-                                {atom, AtomLine, rpc},
-                                {atom, AtomLine, FunctionName},
-                                {integer, AtomLine, FunctionId},
-                                parameters_to_function_content(Parameters, AtomLine)
-                              ]}
-                            }]
-                          }]},
-                      inject(Injector, T, Acc ++ [MyFunction]);
-                    _ ->
-                      inject(Injector, T, Acc ++ [H]) % todo injection error
-                  end;
+              case Function of
+                [{clause, ClauseLine, [{var, PidLine, _} | Params], Guards, [{atom, AtomLine, ok}]}] ->
+                  MyFunction = {
+                    function,
+                    Line,
+                    FunctionName,
+                    Arity,
+                    [
+                      {clause, ClauseLine, [{var, PidLine, 'Pid'} | Params], Guards,
+                        [{op, AtomLine,
+                          '!',
+                          {var, AtomLine, 'Pid'},
+                          {tuple, AtomLine, [
+                            {atom, AtomLine, rpc},
+                            {atom, AtomLine, FunctionName},
+                            {integer, AtomLine, FunctionId},
+                            parameters_to_function_content(Parameters, AtomLine)
+                          ]}
+                        }]
+                      }]},
+                  inject(Injector, T, Acc ++ [MyFunction]);
                 _ ->
                   inject(Injector, T, Acc ++ [H]) % todo injection error
               end
