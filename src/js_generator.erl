@@ -16,7 +16,7 @@ generate_javascript(ClientHandlerModule, ServerHandlerModule) ->
   ClientResponse = "client_functions:" ++ generate_client_functions(ClientFunctions),
   ServerResponse = "server:{" ++ generate_server_functions(ServerFunctions) ++ "}",
 
-  "SuperSocket.prototype.getFunctions = function() { const $this = this; return {" ++ ClientResponse ++ ServerResponse ++ "};};".
+  "RPCSocket.prototype.getFunctions = function() { const $this = this; return {" ++ ClientResponse ++ ServerResponse ++ "};};".
 
 generate_client_functions(ClientFunctions) ->
   generate_client_functions(ClientFunctions, []).
