@@ -39,14 +39,18 @@ inject_client_functions(Form, RPCFunctions) ->
               inject(Injector, T, Acc ++ [H]);
             {FunctionName, FunctionId, Parameters} ->
               case Function of
-                [{clause, ClauseLine, [{var, PidLine, _} | Params], Guards, [{atom, AtomLine, ok}]}] ->
+                [{clause, ClauseLine, [_ | Params], _, [{atom, AtomLine, ok}]}] ->
                   MyFunction = {
                     function,
                     Line,
                     FunctionName,
                     Arity,
                     [
-                      {clause, ClauseLine, [{var, PidLine, 'Pid'} | Params], Guards,
+                      {
+                        clause,
+                        ClauseLine,
+                        [{var, ClauseLine, 'Pid'} | Params],
+                        [[{call, ClauseLine, {atom, ClauseLine, is_pid}, [{var, ClauseLine, 'Pid'}]}]],
                         [{op, AtomLine,
                           '!',
                           {var, AtomLine, 'Pid'},
@@ -57,7 +61,17 @@ inject_client_functions(Form, RPCFunctions) ->
                             parameters_to_function_content(Parameters, AtomLine)
                           ]}
                         }]
-                      }]},
+                      },
+                      {clause, ClauseLine, [{nil, ClauseLine}, {var, ClauseLine, '_Tuple'}], [], [{atom, ClauseLine, ok}]},
+                      {
+                        clause, ClauseLine,
+                        [{cons, ClauseLine, {var, ClauseLine, 'Pid'}, {var, ClauseLine, 'T'}}, {var, ClauseLine, 'Tuple'}],
+                        [],
+                        [{call, ClauseLine, {atom, ClauseLine, FunctionName}, [{var, ClauseLine, 'Pid'}, {var, ClauseLine, 'Tuple'}]},
+                          {call, ClauseLine,
+                            {atom, ClauseLine, FunctionName},
+                            [{var, ClauseLine, 'T'}, {var, ClauseLine, 'Tuple'}]}]}
+                    ]},
                   inject(Injector, T, Acc ++ [MyFunction]);
                 _ ->
                   inject(Injector, T, Acc ++ [H]) % todo injection error
