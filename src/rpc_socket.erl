@@ -137,13 +137,15 @@ do_parse_rpc_functions(T, FunctionName, Function, RPCFunctions, Acc, Type) ->
                   _ ->
                     []
                 end;
-              [_Pid | {tuple, _, ClientParams}] ->
+              [_ | {tuple, _, ClientParams}] ->
                 case Type of
                   client ->
                     ClientParams;
                   _ ->
                     []
-                end
+                end;
+              _ ->
+                []
             end,
           Parameters = parse_rpc_function_parameters(ParameterList, []),
           case Parameters of
