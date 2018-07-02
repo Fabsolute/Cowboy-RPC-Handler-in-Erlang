@@ -38,20 +38,20 @@ inject_client_functions(Form, RPCFunctions) ->
             false ->
               inject(Injector, T, Acc ++ [H]);
             {FunctionName, FunctionId, Parameters} ->
-              case length(Parameters) of
+              case length(Parameters) + 1 of
                 Arity ->
                   case Function of
-                    [{clause, ClauseLine, Params, Guards, [{atom, AtomLine, ok}]}] ->
+                    [{clause, ClauseLine, [_H | Params], Guards, [{atom, AtomLine, ok}]}] ->
                       MyFunction = {
                         function,
                         Line,
                         FunctionName,
                         Arity,
                         [
-                          {clause, ClauseLine, Params, Guards,
+                          {clause, ClauseLine, [{var, AtomLine, 'Pid'} | Params], Guards,
                             [{op, AtomLine,
                               '!',
-                              {call, AtomLine, {atom, AtomLine, self}, []},
+                              {var, 33, 'Pid'},
                               {tuple, AtomLine, [
                                 {atom, AtomLine, rpc},
                                 {atom, AtomLine, FunctionName},
@@ -110,16 +110,11 @@ get_rpc_type_and_functions([_H | T]) ->
 parse_rpc_functions([], _RPCFunctions, Acc, _Type) ->
   Acc;
 parse_rpc_functions([{function, _Line, FunctionName, Arity, Function} | T], RPCFunctions, Acc, Type) ->
-  case Type of
-    server ->
-      case Arity of
-        2 ->
-          do_parse_rpc_functions(T, FunctionName, Function, RPCFunctions, Acc, Type);
-        _ ->
-          parse_rpc_functions(T, RPCFunctions, Acc, Type)
-      end;
-    client ->
-      do_parse_rpc_functions(T, FunctionName, Function, RPCFunctions, Acc, Type)
+  case Arity of
+    2 ->
+      do_parse_rpc_functions(T, FunctionName, Function, RPCFunctions, Acc, Type);
+    _ ->
+      parse_rpc_functions(T, RPCFunctions, Acc, Type)
   end;
 parse_rpc_functions([_H | T], RPCFunctions, Acc, Type) ->
   parse_rpc_functions(T, RPCFunctions, Acc, Type).
@@ -142,10 +137,10 @@ do_parse_rpc_functions(T, FunctionName, Function, RPCFunctions, Acc, Type) ->
                   _ ->
                     []
                 end;
-              _ ->
+              [_Pid | {tuple, _, ClientParams}] ->
                 case Type of
                   client ->
-                    Params;
+                    ClientParams;
                   _ ->
                     []
                 end
