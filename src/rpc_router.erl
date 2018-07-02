@@ -17,4 +17,4 @@ compile([H | T], Acc) ->
     encoder := {_Encoder, _EncoderFunc},
     state := _State
   } = H,
-  compile(T, Acc ++ [{RoutePath, rpc_ws_handler, "/[...]", H}]).
+  compile(T, Acc ++ [{RoutePath ++ "/[...]", rpc_ws_handler, H}]).
