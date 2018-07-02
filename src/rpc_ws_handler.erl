@@ -90,7 +90,9 @@ terminate(Reason, Request, #state{handler_module = HandlerModule, sub_state = Su
       HandlerModule:terminate(Reason, Request, SubState);
     _ ->
       ok
-  end.
+  end;
+terminate(_Reason, _Request, _State) ->
+  ok.
 
 %%%===================================================================
 %%% Internal functions
