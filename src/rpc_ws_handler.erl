@@ -58,8 +58,13 @@ handle_socket(Request, Args) ->
 websocket_init(#state{handler_module = HandlerModule, sub_state = SubState} = State) ->
   case erlang:function_exported(HandlerModule, init, 1) of
     true ->
-      {ok, NewSubState} = HandlerModule:init(SubState),
-      {ok, State#state{sub_state = NewSubState}};
+      try HandlerModule:init(SubState) of
+        {ok, NewSubState} ->
+          {ok, State#state{sub_state = NewSubState}}
+      catch
+        Error ->
+          on_exception(Error, State)
+      end;
     _ ->
       {ok, State}
   end.
@@ -79,15 +84,27 @@ websocket_info({rpc, _Method, FunctionId, Parameters}, #state{sub_state = SubSta
 websocket_info(Info, #state{handler_module = HandlerModule, sub_state = SubState} = State) ->
   case erlang:function_exported(HandlerModule, info, 2) of
     true ->
-      handle_response(HandlerModule:info(Info, SubState), State);
+      try HandlerModule:info(Info, SubState) of
+        Response ->
+          handle_response(Response, State)
+      catch
+        Error ->
+          on_exception(Error, State)
+      end;
     _ ->
       {ok, State}
   end.
 
-terminate(Reason, Request, #state{handler_module = HandlerModule, sub_state = SubState} = _State) ->
+terminate(Reason, Request, #state{handler_module = HandlerModule, sub_state = SubState} = State) ->
   case erlang:function_exported(HandlerModule, terminate, 3) of
     true ->
-      HandlerModule:terminate(Reason, Request, SubState);
+      try HandlerModule:terminate(Reason, Request, SubState) of
+        ok ->
+          ok
+      catch
+        Error ->
+          on_exception(Error, State)
+      end;
     _ ->
       ok
   end;
@@ -109,7 +126,13 @@ handle(#{"m":=FunctionId, "p" := Parameters}, #state{handler_module = HandlerMod
   case MethodExist of
     true ->
       {Method, FunctionId, _Parameters} = lists:keyfind(FunctionId, 2, Functions),
-      handle_response(HandlerModule:Method(list_to_tuple(Parameters), SubState), State);
+      try HandlerModule:Method(list_to_tuple(Parameters), SubState) of
+        Response ->
+          handle_response(Response, State)
+      catch
+        Error ->
+          on_exception(Error, State)
+      end;
     _ ->
       not_found(State)
   end;
@@ -133,3 +156,12 @@ bad_request(State) ->
 not_found(State) ->
   % todo reply not_found
   {ok, State}.
+
+on_exception(Error, #state{handler_module = HandlerModule, sub_state = SubState} = State) ->
+  case erlang:function_exported(HandlerModule, on_exception, 2) of
+    true ->
+      {ok, NewSubState} = HandlerModule:on_exception(Error, SubState),
+      {ok, State#state{sub_state = NewSubState}};
+    _ ->
+      {ok, State}
+  end.
