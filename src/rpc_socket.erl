@@ -4,29 +4,27 @@
 -export([parse_transform/2]).
 
 parse_transform(Form, _Opts) ->
-  io:fwrite("Input ~p ~n", [Form]),
   TypeAndFunctions = get_rpc_type_and_functions(Form),
-  Output = case TypeAndFunctions of
-             false ->
-               Form;
-             {Type, RPCFunctions} ->
-               case length(RPCFunctions) of
-                 0 ->
-                   Form;
-                 _ ->
-                   case Type of
-                     client ->
-                       ParsedFunctions = parse_rpc_functions(Form, RPCFunctions, [], client),
-                       inject_client_functions(Form, ParsedFunctions);
-                     server ->
-                       ParsedFunctions = parse_rpc_functions(Form, RPCFunctions, [], server),
-                       inject_server_rpc_functions(Form, ParsedFunctions);
-                     _ ->
-                       Form % todo type error
-                   end
-               end
-           end,
-  io:fwrite("Output ~p", [Output]), Output.
+  case TypeAndFunctions of
+    false ->
+      Form;
+    {Type, RPCFunctions} ->
+      case length(RPCFunctions) of
+        0 ->
+          Form;
+        _ ->
+          case Type of
+            client ->
+              ParsedFunctions = parse_rpc_functions(Form, RPCFunctions, [], client),
+              inject_client_functions(Form, ParsedFunctions);
+            server ->
+              ParsedFunctions = parse_rpc_functions(Form, RPCFunctions, [], server),
+              inject_server_rpc_functions(Form, ParsedFunctions);
+            _ ->
+              Form % todo type error
+          end
+      end
+  end.
 
 inject_client_functions(Form, RPCFunctions) ->
   inject(
@@ -38,7 +36,6 @@ inject_client_functions(Form, RPCFunctions) ->
           MatchedFunction = lists:keyfind(FunctionName, 1, RPCFunctions),
           case MatchedFunction of
             false ->
-              io:fwrite("nooooo ~p f ~p ~n", [FunctionName, RPCFunctions]),
               inject(Injector, T, Acc ++ [H]);
             {FunctionName, FunctionId, Parameters} ->
               case length(Parameters) of
@@ -65,11 +62,9 @@ inject_client_functions(Form, RPCFunctions) ->
                           }]},
                       inject(Injector, T, Acc ++ [MyFunction]);
                     _ ->
-                      io:fwrite("injection error ~n"),
                       inject(Injector, T, Acc ++ [H]) % todo injection error
                   end;
                 _ ->
-                  io:fwrite("injection error 2 ~n"),
                   inject(Injector, T, Acc ++ [H]) % todo injection error
               end
           end;
