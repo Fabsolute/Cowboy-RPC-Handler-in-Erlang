@@ -41,17 +41,17 @@ inject_client_functions(Form, RPCFunctions) ->
               case length(Parameters) + 1 of
                 Arity ->
                   case Function of
-                    [{clause, ClauseLine, [_H | Params], Guards, [{atom, AtomLine, ok}]}] ->
+                    [{clause, ClauseLine, [{var, PidLine, _} | Params], Guards, [{atom, AtomLine, ok}]}] ->
                       MyFunction = {
                         function,
                         Line,
                         FunctionName,
                         Arity,
                         [
-                          {clause, ClauseLine, [{var, AtomLine, 'Pid'} | Params], Guards,
+                          {clause, ClauseLine, [{var, PidLine, 'Pid'} | Params], Guards,
                             [{op, AtomLine,
                               '!',
-                              {var, 33, 'Pid'},
+                              {var, AtomLine, 'Pid'},
                               {tuple, AtomLine, [
                                 {atom, AtomLine, rpc},
                                 {atom, AtomLine, FunctionName},
