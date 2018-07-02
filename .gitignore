@@ -1,0 +1,8 @@
+.idea/
+_rel/
+deps/
+ebin/
+_build/
+erl_crash.dump
+rebar3.crashdump
+*.iml

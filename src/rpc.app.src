@@ -1,0 +1,10 @@
+{application, rpc, [
+  {description, "RPC Websocket"},
+  {vsn, "1"},
+  {registered, []},
+  {applications, [
+    cowboy
+  ]},
+  {mod, {rpc, []}},
+  {env, []}
+]}.
