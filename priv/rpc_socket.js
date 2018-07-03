@@ -45,10 +45,7 @@ RPCSocket.prototype.onMessage = function (event) {
 };
 
 RPCSocket.prototype.execute = function (id, parameters) {
-    const message = {
-        m: id,
-        p: parameters
-    };
+    const message = [id, parameters];
     this.send(message);
 };
 
