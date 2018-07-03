@@ -35,7 +35,7 @@ generate_server_functions([{Name, Id, Parameters} | T], Acc) ->
 make_javascript_function(Id, Name, Parameters) ->
   NameString = atom_to_list(Name),
   ParametersString = erlang_to_javascript_parameters(Parameters),
-  NameString ++ ":(" ++ ParametersString ++ ")=>{$this.execute(" ++ integer_to_list(Id) ++ ", [" ++ ParametersString ++ "]);}".
+  NameString ++ ":(" ++ ParametersString ++ ")=>{return $this.execute(" ++ integer_to_list(Id) ++ ", [" ++ ParametersString ++ "]);}".
 
 make_javascript_object(Id, Name, Parameters) ->
   NameString = atom_to_list(Name),

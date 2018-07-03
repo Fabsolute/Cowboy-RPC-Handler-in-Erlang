@@ -63,7 +63,7 @@ websocket_init(#state{handler_module = HandlerModule, sub_state = SubState} = St
           {ok, State#state{sub_state = NewSubState}}
       catch
         Error ->
-          on_exception(Error, State)
+          on_exception(-1, Error, State)
       end;
     _ ->
       {ok, State}
@@ -89,7 +89,7 @@ websocket_info(Info, #state{handler_module = HandlerModule, sub_state = SubState
           handle_response(Response, State)
       catch
         Error ->
-          on_exception(Error, State)
+          on_exception(-1, Error, State)
       end;
     _ ->
       {ok, State}
@@ -103,7 +103,7 @@ terminate(Reason, Request, #state{handler_module = HandlerModule, sub_state = Su
           ok
       catch
         Error ->
-          on_exception(Error, State)
+          on_exception(-1, Error, State)
       end;
     _ ->
       ok
@@ -133,7 +133,7 @@ handle([FunctionId, MessageId, Parameters], #state{handler_module = HandlerModul
           handle_response(Response, MessageId, State)
       catch
         Error ->
-          on_exception(Error, State)
+          on_exception(MessageId, Error, State)
       end;
     _ ->
       not_found(State)
@@ -165,11 +165,25 @@ not_found(State) ->
   % todo reply not_found
   {ok, State}.
 
-on_exception(Error, #state{handler_module = HandlerModule, sub_state = SubState} = State) ->
+on_exception(MessageId, Error, #state{handler_module = HandlerModule, sub_state = SubState} = State) ->
   case erlang:function_exported(HandlerModule, on_exception, 2) of
     true ->
-      {ok, NewSubState} = HandlerModule:on_exception(Error, SubState),
-      {ok, State#state{sub_state = NewSubState}};
+      case HandlerModule:on_exception(Error, SubState) of
+        {ok, NewSubState} ->
+          case MessageId of
+            -1 ->
+              {ok, State#state{sub_state = NewSubState}};
+            _ ->
+              send_reply(MessageId, undefined, State#state{sub_state = NewSubState})
+          end;
+        {reply, Response, NewSubState} ->
+          case MessageId of
+            -1 ->
+              {ok, State#state{sub_state = NewSubState}};
+            _ ->
+              send_reply(MessageId, Response, State#state{sub_state = NewSubState})
+          end
+      end;
     _ ->
       {ok, State}
   end.
@@ -179,6 +193,8 @@ send_reply(MessageId, Response, #state{encoder_module = EncoderModule, encoder_f
     case Response of
       undefined ->
         [true, MessageId];
+      [false, FunctionId, Parameters] ->
+        [false, FunctionId, Parameters];
       _ ->
         [true, MessageId, Response]
     end,
