@@ -19,10 +19,14 @@ const RPCSocket = function (host, port, path, encoder, decoder) {
     };
 
     const functions = this.getFunctions();
-    this.server = functions.server;
-    this.client_functions = functions.client_functions;
-    this.encoder = encoder;
-    this.decoder = decoder;
+    if (functions) {
+        this.server = functions.server;
+        this.client_functions = functions.client_functions;
+        this.encoder = encoder;
+        this.decoder = decoder;
+    } else {
+        throw(new Error("server js file not loaded"));
+    }
 };
 
 RPCSocket.prototype.client = {};
@@ -33,10 +37,10 @@ RPCSocket.prototype.onOpen = function (event) {
 RPCSocket.prototype.onMessage = function (event) {
     const data = this.decoder(event.data);
     const functions = this.client_functions;
-    if (functions[data.m]) {
-        const f = functions[data.m];
+    if (functions[data[0]]) {
+        const f = functions[data[0]];
         const name = f.name;
-        this.client[name].call(this, ...data.p);
+        this.client[name].call(this, ...data[1]);
     }
 };
 

@@ -78,7 +78,7 @@ websocket_handle(Data, #state{decoder_module = DecoderModule, decoder_function =
   end.
 
 websocket_info({rpc, _Method, FunctionId, Parameters}, #state{sub_state = SubState} = State) ->
-  Content = #{"m"=>FunctionId, "p"=>Parameters},
+  Content = [FunctionId, Parameters],
   Response = {reply, Content, SubState},
   handle_response(Response, State);
 websocket_info(Info, #state{handler_module = HandlerModule, sub_state = SubState} = State) ->
@@ -115,9 +115,9 @@ terminate(_Reason, _Request, _State) ->
 %%% Internal functions
 %%%===================================================================
 
-handle(#{"m":=FunctionId} = Request, State) when is_float(FunctionId) ->
-  handle(Request#{"m"=>trunc(FunctionId)}, State);
-handle(#{"m":=FunctionId, "p" := Parameters}, #state{handler_module = HandlerModule, sub_state = SubState} = State) ->
+handle([FunctionId, Parameters], State) when is_float(FunctionId) ->
+  handle([trunc(FunctionId), Parameters], State);
+handle([FunctionId, Parameters], #state{handler_module = HandlerModule, sub_state = SubState} = State) ->
   Functions = HandlerModule:exported_rpc_functions(),
   MethodExist = lists:any(
     fun({_MethodName, Id, _Parameters}) -> Id == FunctionId end,
