@@ -1,6 +1,7 @@
 const RPCSocket = function (host, port, path, encoder, decoder) {
     this.websocket = new WebSocket(`ws://${host}:${port}${path}`);
     this.websocket.binaryType = 'arraybuffer';
+    this.waiting_messages = [];
 
     this.websocket.onopen = (event) => {
         this.onOpen(event);
@@ -36,17 +37,32 @@ RPCSocket.prototype.onOpen = function (event) {
 
 RPCSocket.prototype.onMessage = function (event) {
     const data = this.decoder(event.data);
-    const functions = this.client_functions;
-    if (functions[data[0]]) {
-        const f = functions[data[0]];
-        const name = f.name;
-        this.client[name].call(this, ...data[1]);
+    if (data[0] === true) {
+        const message_id = data[1];
+        if (this.waiting_messages[message_id]) {
+            this.waiting_messages[message_id](data[2]);
+        }
+    } else if (data[0] === false) {
+        const functions = this.client_functions;
+        if (functions[data[1]]) {
+            const f = functions[data[1]];
+            const name = f.name;
+            this.client[name].call(this, ...data[2]);
+        }
     }
 };
 
 RPCSocket.prototype.execute = function (id, parameters) {
-    const message = [id, parameters];
-    this.send(message);
+    return new Promise((resolve) => {
+        let message_id = -1;
+        do {
+            message_id = Math.ceil(Math.random() * 100000);
+        } while (this.waiting_messages[message_id]);
+
+        this.waiting_messages[message_id] = resolve;
+        const message = [id, message_id, parameters];
+        this.send(message);
+    });
 };
 
 RPCSocket.prototype.send = function (message) {

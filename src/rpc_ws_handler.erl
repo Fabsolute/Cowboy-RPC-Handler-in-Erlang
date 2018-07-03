@@ -78,7 +78,7 @@ websocket_handle(Data, #state{decoder_module = DecoderModule, decoder_function =
   end.
 
 websocket_info({rpc, _Method, FunctionId, Parameters}, #state{sub_state = SubState} = State) ->
-  Content = [FunctionId, Parameters],
+  Content = [false, FunctionId, Parameters],
   Response = {reply, Content, SubState},
   handle_response(Response, State);
 websocket_info(Info, #state{handler_module = HandlerModule, sub_state = SubState} = State) ->
@@ -115,9 +115,11 @@ terminate(_Reason, _Request, _State) ->
 %%% Internal functions
 %%%===================================================================
 
-handle([FunctionId, Parameters], State) when is_float(FunctionId) ->
-  handle([trunc(FunctionId), Parameters], State);
-handle([FunctionId, Parameters], #state{handler_module = HandlerModule, sub_state = SubState} = State) ->
+handle([FunctionId | Rest], State) when is_float(FunctionId) ->
+  handle([trunc(FunctionId) | Rest], State);
+handle([FunctionId, MessageId, Parameters], State) when is_float(MessageId) ->
+  handle([FunctionId, trunc(MessageId), Parameters], State);
+handle([FunctionId, MessageId, Parameters], #state{handler_module = HandlerModule, sub_state = SubState} = State) ->
   Functions = HandlerModule:exported_rpc_functions(),
   MethodExist = lists:any(
     fun({_MethodName, Id, _Parameters}) -> Id == FunctionId end,
@@ -128,7 +130,7 @@ handle([FunctionId, Parameters], #state{handler_module = HandlerModule, sub_stat
       {Method, FunctionId, _Parameters} = lists:keyfind(FunctionId, 2, Functions),
       try HandlerModule:Method(list_to_tuple(Parameters), SubState) of
         Response ->
-          handle_response(Response, State)
+          handle_response(Response, MessageId, State)
       catch
         Error ->
           on_exception(Error, State)
@@ -139,14 +141,20 @@ handle([FunctionId, Parameters], #state{handler_module = HandlerModule, sub_stat
 
 handle(_, State) ->
   bad_request(State).
+handle_response(Response, State) ->
+  handle_response(Response, -1, State).
 
-handle_response(Response, #state{encoder_module = EncoderModule, encoder_function = EncoderFunction} = State) ->
+handle_response(Response, MessageId, State) ->
   case Response of
     {ok, NewSubState} ->
-      {ok, State#state{sub_state = NewSubState}};
+      case MessageId of
+        -1 ->
+          {ok, State#state{sub_state = NewSubState}};
+        _ ->
+          send_reply(MessageId, undefined, State#state{sub_state = NewSubState})
+      end;
     {reply, SubResponse, NewSubState} ->
-      {ok, EncodedResponse} = EncoderModule:EncoderFunction(SubResponse),
-      {reply, {binary, EncodedResponse}, State#state{sub_state = NewSubState}}
+      send_reply(MessageId, SubResponse, State#state{sub_state = NewSubState})
   end.
 
 bad_request(State) ->
@@ -165,3 +173,14 @@ on_exception(Error, #state{handler_module = HandlerModule, sub_state = SubState}
     _ ->
       {ok, State}
   end.
+
+send_reply(MessageId, Response, #state{encoder_module = EncoderModule, encoder_function = EncoderFunction} = State) ->
+  Message =
+    case Response of
+      undefined ->
+        [true, MessageId];
+      _ ->
+        [true, MessageId, Response]
+    end,
+  {ok, EncodedResponse} = EncoderModule:EncoderFunction(Message),
+  {reply, {binary, EncodedResponse}, State}.
