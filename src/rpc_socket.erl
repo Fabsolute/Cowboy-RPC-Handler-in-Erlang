@@ -136,26 +136,8 @@ do_parse_rpc_functions(T, FunctionName, Function, RPCFunctions, Acc, Type) ->
       parse_rpc_functions(T, RPCFunctions, Acc, Type);
     true ->
       case Function of
-        [{clause, _, Params, _, _}] ->
-          ParameterList =
-            case Params of
-              [{tuple, _, ServerParams} | _] ->
-                case Type of
-                  server ->
-                    ServerParams;
-                  _ ->
-                    []
-                end;
-              [_, {tuple, _, ClientParams}] ->
-                case Type of
-                  client ->
-                    ClientParams;
-                  _ ->
-                    []
-                end;
-              _ ->
-                []
-            end,
+        [{clause, _, _, _, _} = Clause | Rest] ->
+          ParameterList = parse_clause(Type, Rest, Clause),
           Parameters = parse_rpc_function_parameters(ParameterList, []),
           case Parameters of
             false ->
@@ -207,3 +189,26 @@ type_list_to_function_content([Name | T], Line, Type) ->
 
 parameters_to_function_content(List, Line) ->
   type_list_to_function_content(List, Line, var).
+
+
+parse_clause(Type, [], {clause, _, Params, _, _}) ->
+  case Params of
+    [{tuple, _, ServerParams} | _] ->
+      case Type of
+        server ->
+          ServerParams;
+        _ ->
+          []
+      end;
+    [_, {tuple, _, ClientParams}] ->
+      case Type of
+        client ->
+          ClientParams;
+        _ ->
+          []
+      end;
+    _ ->
+      []
+  end;
+parse_clause(Type, [H | T], _) ->
+  parse_clause(Type, T, H).
